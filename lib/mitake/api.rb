@@ -1,10 +1,11 @@
 module Mitake
   class API
 
-    SmSendGet   = "/SmSendGet.asp"
-    SmSendPost  = "/SmSendPost.asp"
-    SmQueryGet  = "/SmQueryGet.asp"
-    SpLmGet     = "/SpLmGet"
+    # SmSendGet   = "/SmSendGet.asp"
+    # SmSendPost  = "/SmSendPost.asp"
+    # SmQueryGet  = "/SmQueryGet.asp"
+    # SpLmGet     = "/SpLmGet"
+    SmSend = "/b2c/mtk/SmSend"
 
     Statuscode = {
       '*' => '系統發生錯誤，請聯絡三竹資訊窗口人員',
@@ -41,7 +42,7 @@ module Mitake
     def initialize(options = {})
       @username = options.fetch(:username) { ENV['mitake_username'] }
       @password = options.fetch(:password) { ENV['mitake_password'] }
-      @host = options.fetch(:host) { "http://smexpress.mitake.com.tw:9600" }
+      @host = options.fetch(:host) { "https://sms.mitake.com.tw" }
       @SpLm_host = options.fetch(:SpLm_host) { "http://smexpress.mitake.com.tw:7002" }
     end
 
@@ -53,7 +54,7 @@ module Mitake
       case numbers
       when Array
         if numbers.length == 1
-          response = http_get(api_uri(@host, SmSendGet), {dstaddr: numbers.first, smbody: message, response: response_callback_url})
+          response = http_get(api_uri(@host, SmSend), {dstaddr: numbers.first, smbody: message, response: response_callback_url})
         else
           response = multi_message_post(api_uri(@host, SmSendPost), numbers, message, response_callback_url)
         end
