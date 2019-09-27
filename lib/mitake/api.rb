@@ -47,18 +47,21 @@ module Mitake
 
     def send_sms(options = {})
       numbers = options.fetch(:numbers) { "" }
-      message = hack_message_encode(options.fetch(:message)) { "" }
+      # message = hack_message_encode(options.fetch(:message)) { "" }
+      message = options.fetch(:message) { "" }
       response_callback_url = options.fetch(:response_callback_url) { "" }
 
       case numbers
       when Array
-        if numbers.length == 1
-          response = http_get(api_uri(@host, SmSendGet), {dstaddr: numbers.first, smbody: message, response: response_callback_url})
-        else
-          response = multi_message_post(api_uri(@host, SmSendPost), numbers, message, response_callback_url)
-        end
-      when String
-        response = http_get(api_uri(@host, SmSendGet), {dstaddr: numbers, smbody: message, response: response_callback_url})
+        # if numbers.length == 1
+        #   response = http_get(api_uri(@host, SmSendGet), {dstaddr: numbers.first, smbody: message, response: response_callback_url})
+        # else
+        #   response = multi_message_post(api_uri(@host, SmSendPost), numbers, message, response_callback_url)
+        # end
+        response = multi_message_post(api_uri(@host, SmSendPost), numbers, message, response_callback_url)
+        when String
+          response = multi_message_post(api_uri(@host, SmSendPost), [numbers], message, response_callback_url)
+        # response = http_get(api_uri(@host, SmSendGet), {dstaddr: numbers, smbody: message, response: response_callback_url})
       else
         return raise "Numbers Must Be Array or String"
       end
@@ -182,8 +185,8 @@ module Mitake
       return data.join('')
     end
 
-    def multi_message_post(uri, numbers, message)
-      post_data = multi_message_data(numbers, message)
+    def multi_message_post(uri, numbers, message, response_callback_url)
+      post_data = multi_message_data(numbers, message, response_callback_url)
 
       http = Net::HTTP.new(uri.host, uri.port)
       
@@ -199,9 +202,7 @@ module Mitake
     def http_get(uri, params)
       if params.any?
         params.each do |key, value|
-          if key != :smbody
-            uri.query = URI.encode_www_form(URI.decode_www_form(uri.query) << [key, value])
-          end
+          uri.query = URI.encode_www_form(URI.decode_www_form(uri.query) << [key, value])
         end
       end
 
