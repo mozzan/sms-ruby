@@ -199,7 +199,9 @@ module Mitake
     def http_get(uri, params)
       if params.any?
         params.each do |key, value|
-          uri.query = URI.encode_www_form(URI.decode_www_form(uri.query) << [key, value])
+          if key != :smbody
+            uri.query = URI.encode_www_form(URI.decode_www_form(uri.query) << [key, value])
+          end
         end
       end
 
