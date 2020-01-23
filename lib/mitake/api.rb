@@ -5,6 +5,7 @@ module Mitake
     SmSendPost  = "/SmSendPost.asp"
     SmQueryGet  = "/SmQueryGet.asp"
     SpLmGet     = "/SpLmGet"
+    SpLmPost     = "/SpLmPost"
 
     Statuscode = {
       '*' => '系統發生錯誤，請聯絡三竹資訊窗口人員',
@@ -36,7 +37,7 @@ module Mitake
       '9' => '預約已取消'
     }
 
-    
+
 
     def initialize(options = {})
       @username = options.fetch(:username) { ENV['mitake_username'] }
@@ -97,7 +98,7 @@ module Mitake
 
     def get_message_status(options = {})
       msgid = options.fetch(:msgid) { nil }
-      
+
       case msgid
       when String
         response = http_get(api_uri(@host, SmQueryGet), options)
@@ -132,15 +133,17 @@ module Mitake
         result.last.to_i
       else
         raise "API Fetch Faild!"
-      end      
+      end
     end
 
     def send_long_sms(options = {})
-      numbers = options.fetch(:numbers) { "" }
-      message = hack_message_encode(options.fetch(:message)) { "" }
+      number = options.fetch(:number) { "" }
+      # message = hack_message_encode(options.fetch(:message)) { "" }
+      message = options.fetch(:message)
+
       response_callback_url = options.fetch(:response_callback_url) { "" }
 
-      response = http_get(api_uri(@SpLm_host, SpLmGet), {dstaddr: number, smbody: message, response: response_callback_url})
+      response = http_get(api_uri(@SpLm_host, SpLmGet), {dstaddr: number, smbody: message, response: response_callback_url, CharsetURL: "utf-8"})
       response_message = response.body
       # response_message = "[1]\r\nmsgid=#021BCAE83\r\nstatuscode=1\r\nAccountPoint=93"
 
@@ -151,6 +154,8 @@ module Mitake
                                    map{ |e| e.split("\r\n").map{|e| e.split("=")}.to_h }
 
         results << { "AccountPoint" => /AccountPoint=\w+/.match(response_message)[0].split("=")[1] }
+
+
 
         results.map { |e| e.default_proc = proc{|h, k| h.key?(k.to_s) ? h[k.to_s] : nil} }
       else
@@ -165,7 +170,7 @@ module Mitake
       end
 
       results
-      #[{"msgid"=>"#021BCAF21", "statuscode"=>"1"}, {"AccountPoint"=>"92"}] 
+      #[{"msgid"=>"#021BCAF21", "statuscode"=>"1"}, {"AccountPoint"=>"92"}]
     end
 
     def api_uri(host, path)
@@ -189,7 +194,36 @@ module Mitake
       post_data = multi_message_data(numbers, message, response_callback_url)
 
       http = Net::HTTP.new(uri.host, uri.port)
-      
+
+      request = Net::HTTP::Post.new(uri.request_uri)
+
+      request.body = post_data
+      request.content_length = post_data.length
+      request.content_type = 'text/xml'
+
+      return http.request(request)
+    end
+
+    def multi_long_message_data(numbers, message, response_callback_url)
+      valid_seconds = 24 * 60 * 60
+      data = %w()
+      numbers.each_with_index do |number, index|
+        data.push "#{index}$$"
+        data.push "#{number}$$"
+        data.push "$$"
+        data.push "$$"
+        data.push "$$"
+        data.push "$$"
+        data.push "#{message}\r\n"
+      end
+      return data.join('')
+    end
+
+    def multi_long_message_post(uri, numbers, message, response_callback_url)
+      post_data = multi_long_message_data(numbers, message, response_callback_url)
+
+      http = Net::HTTP.new(uri.host, uri.port)
+
       request = Net::HTTP::Post.new(uri.request_uri)
 
       request.body = post_data
@@ -206,10 +240,12 @@ module Mitake
         end
       end
 
+      uri.query = uri.query.gsub('+', '%20')
+
       http = Net::HTTP.new(uri.host, uri.port)
 
       request = Net::HTTP::Get.new(uri.request_uri)
-      
+
       return http.request(request)
     end
 
@@ -222,6 +258,6 @@ module Mitake
       { username: @username, password: @password, encoding: 'UTF8' }
     end
 
-    
+
   end
 end
